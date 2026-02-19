@@ -506,7 +506,7 @@ document.getElementById('dictionary-modal').addEventListener('click', function(e
 });
 
 async function lookupWord(e) {
-    e.preventDefault(); // Ngăn việc mất vùng chọn văn bản
+    e.preventDefault(); 
     e.stopPropagation();
 
     const selection = window.getSelection().toString().trim();
@@ -515,7 +515,6 @@ async function lookupWord(e) {
         return;
     }
 
-    // Hiển thị modal và trạng thái Loading
     const modal = document.getElementById('dictionary-modal');
     const content = document.getElementById('dictionary-content');
     modal.classList.remove('hidden');
@@ -525,19 +524,29 @@ async function lookupWord(e) {
             <p>Đang tìm kiếm "<b>${selection}</b>"...</p>
         </div>`;
 
-    // Cấu hình API
     const apiKey = 'WBBcwnwQpV89';
-    // Mặc định tra từ tiếng Anh (en) trong văn bản
     const lang = 'en'; 
-    const url = `https://api.tracau.vn/${apiKey}/s/${encodeURIComponent(selection)}/${lang}`;
+    
+    // 1. Tạo URL gốc của API Tra Câu
+    const targetUrl = `https://api.tracau.vn/${apiKey}/s/${encodeURIComponent(selection)}/${lang}`;
+    
+    // 2. Bọc URL gốc vào proxy của AllOrigins
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
     try {
-        const response = await fetch(url);
-        
+        const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error(`Lỗi kết nối: ${response.status}`);
         
-        const data = await response.json();
-        renderTracauResult(data, selection);
+        // 3. Lấy dữ liệu từ proxy
+        const proxyData = await response.json();
+        
+        // AllOrigins trả về dữ liệu gốc dưới dạng chuỗi trong thuộc tính 'contents'
+        if (proxyData.contents) {
+            const data = JSON.parse(proxyData.contents);
+            renderTracauResult(data, selection);
+        } else {
+            throw new Error("Không lấy được dữ liệu từ API.");
+        }
 
     } catch (err) {
         console.error(err);
@@ -545,7 +554,6 @@ async function lookupWord(e) {
             <div class="p-4 bg-red-50 text-red-700 rounded border border-red-200">
                 <h4 class="font-bold mb-2"><i class="fas fa-exclamation-triangle"></i> Có lỗi xảy ra</h4>
                 <p>${err.message}</p>
-                <p class="text-sm mt-2 text-gray-600">Lưu ý: Nếu bạn mở file trực tiếp (file://), trình duyệt có thể chặn kết nối API do chính sách CORS (Cross-Origin).</p>
             </div>`;
     }
 }
