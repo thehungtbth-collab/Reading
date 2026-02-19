@@ -531,7 +531,7 @@ async function lookupWord(e) {
     const targetUrl = `https://api.tracau.vn/${apiKey}/s/${encodeURIComponent(selection)}/${lang}`;
     
     // 2. Đi qua proxy Cloudflare của bạn
-    const myWorkerUrl = 'https://reading.thehungtbth.workers.dev'; // DÁN LINK WORKER CỦA BẠN VÀO ĐÂY
+    const myWorkerUrl = 'https://reading.thehungtbth.workers.dev/'; // DÁN LINK WORKER CỦA BẠN VÀO ĐÂY
     const proxyUrl = `${myWorkerUrl}/?url=${encodeURIComponent(targetUrl)}`;
 
     try {
