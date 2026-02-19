@@ -530,9 +530,10 @@ async function lookupWord(e) {
     // 1. URL gốc của Tra Câu
     const targetUrl = `https://api.tracau.vn/${apiKey}/s/${encodeURIComponent(selection)}/${lang}`;
     
-    // 2. Dùng corsproxy.io
-    const myWorkerUrl = 'https://reading.thehungtbth.workers.dev'; // Thay link của bạn vào đây
-const proxyUrl = `${myWorkerUrl}/?url=${encodeURIComponent(targetUrl)}`;
+    // 2. Đi qua proxy Cloudflare của bạn
+    const myWorkerUrl = 'https://link-worker-cua-ban.workers.dev'; // DÁN LINK WORKER CỦA BẠN VÀO ĐÂY
+    const proxyUrl = `${myWorkerUrl}/?url=${encodeURIComponent(targetUrl)}`;
+
     try {
         const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error(`Lỗi kết nối: ${response.status}`);
