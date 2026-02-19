@@ -531,8 +531,8 @@ async function lookupWord(e) {
     const targetUrl = `https://api.tracau.vn/${apiKey}/s/${encodeURIComponent(selection)}/${lang}`;
     
     // 2. Dùng corsproxy.io
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-
+    const myWorkerUrl = 'https://ielts-tracau-proxy.username.workers.dev'; // Thay link của bạn vào đây
+const proxyUrl = `${myWorkerUrl}/?url=${encodeURIComponent(targetUrl)}`;
     try {
         const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error(`Lỗi kết nối: ${response.status}`);
