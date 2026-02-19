@@ -527,36 +527,29 @@ async function lookupWord(e) {
     const apiKey = 'WBBcwnwQpV89';
     const lang = 'en'; 
     
-    // 1. Tạo URL gốc của API Tra Câu
+    // 1. URL gốc của Tra Câu
     const targetUrl = `https://api.tracau.vn/${apiKey}/s/${encodeURIComponent(selection)}/${lang}`;
     
-    // 2. Bọc URL gốc vào proxy của AllOrigins
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    // 2. Dùng corsproxy.io
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
     try {
         const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error(`Lỗi kết nối: ${response.status}`);
         
-        // 3. Lấy dữ liệu từ proxy
-        const proxyData = await response.json();
-        
-        // AllOrigins trả về dữ liệu gốc dưới dạng chuỗi trong thuộc tính 'contents'
-        if (proxyData.contents) {
-            const data = JSON.parse(proxyData.contents);
-            renderTracauResult(data, selection);
-        } else {
-            throw new Error("Không lấy được dữ liệu từ API.");
-        }
+        // corsproxy.io trả thẳng file JSON gốc, không cần parse mệt mỏi
+        const data = await response.json(); 
+        renderTracauResult(data, selection);
 
     } catch (err) {
         console.error(err);
         content.innerHTML = `
             <div class="p-4 bg-red-50 text-red-700 rounded border border-red-200">
-                <h4 class="font-bold mb-2"><i class="fas fa-exclamation-triangle"></i> Có lỗi xảy ra</h4>
-                <p>${err.message}</p>
+                <h4 class="font-bold mb-2"><i class="fas fa-exclamation-triangle"></i> Lỗi "Failed to fetch"</h4>
+                <p>Không thể kết nối đến máy chủ. Proxy có thể đang quá tải hoặc bị chặn.</p>
+                <p class="text-sm mt-2 font-mono text-gray-600">${err.message}</p>
             </div>`;
     }
-}
 
 function renderTracauResult(data, keyword) {
     const content = document.getElementById('dictionary-content');
