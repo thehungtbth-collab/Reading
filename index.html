@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IELTS Reading Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+        body { font-family: 'Roboto', sans-serif; overflow: hidden; transition: color 0.3s, background-color 0.3s; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #999; }
+
+        .passage-content { white-space: pre-wrap; line-height: 1.8; font-size: inherit; }
+        .passage-content p { margin-bottom: 1em; }
+        
+        .drop-zone { 
+            min-width: 80px; min-height: 28px; display: inline-flex; align-items: center; justify-content: center; 
+            border: 2px dashed #cbd5e1; background-color: rgba(248, 250, 252, 0.5); 
+            padding: 2px 30px 2px 8px; margin: 0 4px; border-radius: 4px; font-weight: 700; color: inherit; 
+            vertical-align: middle; transition: all 0.2s; position: relative; 
+        }
+        .drop-zone.filled { border-style: solid; border-color: #3b82f6; background-color: rgba(239, 246, 255, 0.8); color: #1e40af; }
+        
+        .remove-answer { 
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%); 
+            cursor: pointer; color: #ef4444; display: none; padding: 2px; font-size: 12px;
+        }
+        .filled .remove-answer { display: block; }
+
+        .heading-drop-zone { 
+            display: inline-flex; align-items: center; justify-content: space-between; 
+            width: 100%; max-width: 100%; min-height: 40px; border: 2px dashed #cbd5e1; 
+            background-color: rgba(248, 250, 252, 0.5); border-radius: 6px; padding: 4px 12px; 
+            margin: 5px 0; font-size: 0.9rem; color: inherit; position: relative; 
+        }
+        .heading-drop-zone.filled { border-style: solid; border-color: #3b82f6; background-color: rgba(239, 246, 255, 0.8); color: #1e40af; font-weight: bold; }
+
+        input:checked + .option-circle { background-color: #2563eb; color: white; border-color: #2563eb; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3); }
+        .custom-radio:checked + div, .custom-checkbox:checked + div { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        .palette-item.answered { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        
+        ::selection { background-color: #fef08a; color: black; }
+        
+        /* Highlight & Note Styles */
+        .highlighted { background-color: #fef08a; cursor: pointer; border-radius: 2px; transition: background-color 0.2s; }
+        .highlighted:hover { background-color: #fde047; }
+        
+        .note-marker { 
+            border-bottom: 2px dotted #d97706; background-color: #ffedd5; cursor: help; position: relative; 
+        }
+        .note-marker:hover::after {
+            content: attr(data-note);
+            position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(-5px);
+            background: #333; color: #fff; padding: 8px 12px; border-radius: 6px;
+            width: max-content; max-width: 250px; font-size: 13px; font-weight: 500; z-index: 100;
+            pointer-events: none; white-space: normal; line-height: 1.4; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .note-marker:hover::before {
+            content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(-1px);
+            border-width: 6px; border-style: solid; border-color: #333 transparent transparent transparent;
+        }
+        
+        #highlight-tooltip { position: absolute; z-index: 9999; display: none; background: #333; color: white; padding: 4px; border-radius: 6px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateX(-50%); white-space: nowrap; }
+        #highlight-tooltip button { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: white; cursor: pointer; padding: 6px 10px; border-radius: 4px; transition: background 0.2s; }
+        #highlight-tooltip button:hover { background: rgba(255,255,255,0.1); }
+        #highlight-tooltip .divider { display: inline-block; width: 1px; height: 16px; background: rgba(255,255,255,0.3); vertical-align: middle; margin: 0 2px; }
+
+        .paragraph-label { display: block; margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 700; color: #ea580c; font-size: 1.1rem; }
+        .correction-label { display: inline-block; margin-left: 8px; font-size: 0.85rem; font-weight: 700; color: #16a34a; background-color: #dcfce7; padding: 2px 6px; border-radius: 4px; border: 1px solid #bbf7d0; white-space: nowrap; }
+
+        /* Themes */
+        body.theme-sepia { background-color: #fcf6e5; color: #433422; } /* Softer Yellow */
+        body.theme-sepia .bg-white { background-color: #fffef9; border-color: #eaddcf; }
+        body.theme-sepia ::selection { background-color: #d6b48d; }
+        
+        body.theme-dark { background-color: #1e293b; color: #e2e8f0 !important; }
+        body.theme-dark .bg-white { background-color: #0f172a; border-color: #334155; }
+
+        /* Resizer */
+        #resizer { width: 8px; cursor: col-resize; background-color: #e2e8f0; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; flex-shrink: 0; z-index: 20; transition: background-color 0.2s; }
+        #resizer:hover, #resizer.active { background-color: #3b82f6; }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col text-base text-gray-800 theme-light">
+    <div id="highlight-tooltip">
+        <button onmousedown="applyHighlight(event)"><i class="fas fa-highlighter text-yellow-400"></i> Highlight</button>
+        <span class="divider"></span>
+        <button onmousedown="addNote(event)"><i class="fas fa-comment-medical text-green-400"></i> Note</button>
+		<button onmousedown="lookupWord(event)"><i class="fas fa-search text-blue-400"></i> Tra từ</button>
+    </div>
+    <header class="bg-white border-b h-16 flex items-center justify-between px-6 shadow-sm shrink-0 z-20">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-bold"><i class="fas fa-book-open text-blue-600 mr-2"></i>IELTS Test</h1>
+            <div id="timer" class="text-red-600 font-mono text-xl font-bold bg-gray-50 px-3 py-1 rounded border">60:00</div>
+            <div id="scoreDisplay" class="hidden flex items-center gap-2 font-bold text-lg bg-green-50 px-3 py-1 rounded border border-green-200">
+                <span class="text-green-700">Raw Score: 0/0</span>
+                <span class="text-blue-700 ml-2 border-l pl-2 band-score">Est. Band: -</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 relative">
+            <button onclick="toggleSettings()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-sm font-medium flex items-center gap-2"><i class="fas fa-cog"></i> Settings</button>
+            <div id="settings-dropdown" onmouseleave="toggleSettings(false)" class="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded shadow-lg p-4 hidden z-50">
+                <div class="mb-4 text-gray-800"><label class="block text-xs font-bold text-gray-500 mb-2 uppercase">Text Size</label>
+                    <div class="flex gap-2"><button onclick="changeFontSize(-1)" class="flex-1 bg-gray-100 rounded px-2 py-1.5 border">A-</button><button onclick="changeFontSize(1)" class="flex-1 bg-gray-100 rounded px-2 py-1.5 border">A+</button></div>
+                </div>
+                <div class="mb-4"><label class="block text-xs font-bold text-gray-500 mb-2 uppercase">Theme</label>
+                    <div class="flex gap-2"><button onclick="setTheme('light')" class="w-10 h-10 rounded border bg-white"></button><button onclick="setTheme('sepia')" class="w-10 h-10 rounded border bg-[#fcf6e5]"></button><button onclick="setTheme('dark')" class="w-10 h-10 rounded border bg-[#1e293b]"></button></div>
+                </div>
+            </div>
+            <button onclick="submitExam()" id="submitBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded shadow font-medium">Submit</button>
+            <button onclick="downloadReview()" id="downloadBtn" class="hidden bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded shadow font-medium ml-2"><i class="fas fa-save mr-2"></i>Download Review</button>
+        </div>
+    </header>
+    
+    <!-- Main Container with Resizer -->
+    <div class="flex-1 flex overflow-hidden" id="mainContainer">
+        <div id="passagePane" class="overflow-y-auto p-8 bg-white border-r" style="width: 50%;">
+            <h2 id="passageTitle" class="text-2xl font-bold mb-6 border-b pb-4"></h2>
+            <div id="passageText" class="passage-content"></div>
+        </div>
+        
+        <div id="resizer"></div>
+        
+        <div id="questionPane" class="flex-1 overflow-y-auto p-8 bg-gray-50" style="min-width: 300px;">
+            <h2 class="text-xl font-bold mb-6 sticky top-0 bg-inherit z-10 py-2 border-b">Questions</h2>
+            <div id="questionsContainer" class="space-y-8"></div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t h-16 flex flex-col shrink-0"><div class="flex border-b" id="tabsContainer"></div><div class="flex-1 overflow-x-auto flex items-center px-4 space-x-2 scrollbar-hide" id="paletteContainer"></div></footer>
+
+    <!-- Initial Data -->
+    <script type="application/json" id="exam-data">[{"id":1,"title":"Passage 1","content":"<b>Bats to the rescue</b>\n<i>How Madagascar’s bats are helping to save the rainforest</i>\n\nThere are few places in the world where relations between agriculture and conservation are more strained. Madagascar’s forests are being converted to agricultural land at a rate of one percent every year. Much of this destruction is fuelled by the cultivation of the country’s main staple crop: rice. And a key reason for this destruction is that insect pests are destroying vast quantities of what is grown by local subsistence farmers, leading them to clear forest to create new paddy fields. The result is devastating habitat and biodiversity loss on the island, but not all species are suffering. In fact, some of the island’s insectivorous bats are currently thriving and this has important implications for farmers and conservationists alike.\n\nEnter University of Cambridge zoologist Ricardo Rocha. He’s passionate about conservation, and bats. More specifically, he’s interested in how bats are responding to human activity and deforestation in particular. Rocha’s new study shows that several species of bats are giving Madagascar’s rice farmers a vital pest control service by feasting on plagues of insects. And this, he believes, can ease the financial pressure on farmers to turn forest into fields.\n\nBats comprise roughly one-fifth of all mammal species in Madagascar and thirty-six recorded bat species are native to the island, making it one of the most important regions for conservation of this animal group anywhere in the world.\n\nCo-leading an international team of scientists, Rocha found that several species of indigenous bats are taking advantage of habitat modification to hunt insects swarming above the country’s rice fields. They include the Malagasy mouse-eared bat, Major’s long-fingered bat, the Malagasy white-bellied free-tailed bat and Peters’ wrinkle-lipped bat.\n\n‘These winner species are providing a valuable free service to Madagascar as biological pest suppressors,’ says Rocha. ‘We found that six species of bat are preying on rice pests, including the paddy swarming caterpillar and grass webworm. The damage which these insects cause puts the island’s farmers under huge financial pressure and that encourages deforestation.’\n\nThe study, now published in the journal Agriculture, Ecosystems and Environment, set out to investigate the feeding activity of insectivorous bats in the farmland bordering the Ranomafana National Park in the southeast of the country.\n\nRocha and his team used state-of-the-art ultrasonic recorders to record over a thousand bat ‘feeling buzzes’ (echolocation sequences used by bats to target their prey) at 54 sites, in order to identify the favourite feeding spots of the bats. The next used DNA barcoding techniques to analyse droppings collected from bats at the different sites.\n\nThe recordings revealed that bat activity over rice fields was much higher than it was in continuous forest – seven times higher over rice fields which were on flat ground, and sixteen times higher over fields on the sides of hills – leaving no doubt that the animals are preferentially foraging in these man-made ecosystems. The researchers suggest that the bats favour these fields because lack of water and nutrient run-off make these crops more susceptible to insect pest infestations. DNA analysis showed that all six species of bat had fed on economically important insect pests. While the findings indicated that rice farming benefits most from the bats, the scientists also found indications that the bats were consuming pests of other crops, including the black twig borer (which infests coffee plants), the sugarcane cicada, the macadamia nut-borer, and the sober tabby (a pest of citrus fruits).\n\n‘The effectiveness of bats as pest controllers has already been proven in the USA and Catalonia,’ said co-author James Kemp, from the University of Lisbon. ‘But our study is the first to show this happening in Madagascar, where the stakes for both farmers and conservationists are so high.’\n\nLocal people may have a further reason to be grateful to their bats. While the animal is often associated with spreading disease, Rocha and his team found evidence that Malagasy bats feed not just on crop pests but also on mosquitoes – carriers of malaria, Rift Valley fever virus and elephantiasis – as well as blackflies, which spread river blindness.\n\nRocha points out that the relationship is complicated. When food is scarce, bats become a crucial source of protein for local people. Even the children will hunt them. And as well as roosting in trees, the bats sometimes roost in buildings, but are not welcomed there because they make them unclean. At the same time, however, they are associated with sacred caves and the ancestors, so they can be viewed as beings between worlds, which makes them very significant in the culture of the people. And one potential problem is that while these bats are benefiting from farming, at the same time deforestation is reducing the places where they can roost, which could have long-term effects on their numbers. Rocha says, ‘With the right help, we hope that farmers can promote this mutually beneficial relationship by installing bat houses.’\n\nRocha and his colleagues believe that maximising bat populations can help to boost crop yields and promote sustainable livelihoods. The team is now calling for further research to quantify this contribution. ‘I’m very optimistic,’ says Rocha. ‘If we give nature a hand, we can speed up the process of regeneration.’","questions":[{"id":"nwprgfdr6","type":"tfng","title":"Questions 1-6","instruction":"Do the following statements agree with the information given in Reading Passage 1?\nIn boxes 1-6 on your answer sheet, write\n<b>TRUE</b>               if the statement agrees with the information\n<b>FALSE</b>              if the statement contradicts the information\n<b>NOT GIVEN</b>    if there is no information on this\n","items":["1   Many Madagascan forests are being destroyed by attacks from insects.","2   Loss of habitat has badly affected insectivorous bats in Madagascar.","3   Ricardo Rocha has carried out studies of bats in different parts of the world.","4   Habitat modification has resulted in indigenous bats in Madagascar becoming useful to farmers.","5   The Malagasy mouse-eared bat is more common than other indigenous bat species in Madagascar.","6   Bats may feed on paddy swarming caterpillars and grass webworms."],"options":[],"text":"","dragType":"disappearing","maxSelection":1,"bulkText":"","start":1,"end":6},{"id":"47zzgr7n7","type":"gap_fill","title":"Questions 7-13","instruction":"Complete the table below.\nChoose <b>ONE WORD ONLY<b> from the passage for each answer.\nWrite your answers in boxes 7-13 on your answer sheet. \n","items":["<b>The study carried out by Rocha’s team</b>","<b>Aim</b>","●   to investigate the feeding habits of bats in farmland near the Ranomafana National Park","<b>Method<</b>","●   ultrasonic recording to identify favourite feeding spots","●   DNA analysis of bat [input]","<b>Findings</b>","●   <b>the bats</b>","     –  were most active in rice fields located on hills","     –  ate pests of rice, [input], sugarcane, nuts and fruit","     –  prevent the spread of disease by eating [input] and blackflies","●   <b>local attitudes to bats are mixed:</b>","     –  they provide food rich in [input]","     –  the buildings where they roost become [input]","     –  they play an important role in local [input]","<b>Recommendation</b>","●   farmers should provide special [input] to support the bat population",""],"options":[],"text":"","dragType":"disappearing","maxSelection":1,"bulkText":"","start":7,"end":13}],"answers":{"1":"FALSE","2":"FALSE","3":"NOT GIVEN","4":"TRUE","5":"NOT GIVEN","6":"TRUE","7":"droppings","8":"coffee","9":"mosquitoes","10":"protein","11":"unclean","12":"culture","13":"houses"}},{"id":2,"title":"Passage 2","content":"<b>Does education fuel economic growth?</b>\n[p]\nOver the last decade, a huge database about the lives of southwest German villagers between 1600 and 1900 has been compiled by a team led by Professor Sheilagh Ogilvie at Cambridge University’s Faculty of Economics. It includes court records, guild ledgers, parish registers, village censuses, tax lists and – the most recent addition – 9,000 handwritten inventories listing over a million personal possessions belonging to ordinary women and men across three centuries. Ogilvie, who discovered the inventories in the archives of two German communities 30 years ago, believes they may hold the answer to a conundrum that has long puzzled economists: the lack of evidence for a causal link between education and a country’s economic growth.\n[p]\nAs Ogilvie explains, ‘Education helps us to work more productively, invent better technology, and earn more … surely it must be critical for economic growth? But, if you look back through history, there’s no evidence that having a high literacy rate made a country industrialise earlier.’ Between 1600 and 1900, England had only mediocre literacy rates by European standards, yet its economy grew fast and it was the first country to industrialise. During this period, Germany and Scandinavia had excellent literacy rates, but their economies grew slowly and they industrialised late. ‘Modern cross-country analyses have also struggled to find evidence that education causes economic growth, even though there is plenty of evidence that growth increases education,’ she adds.\n[p]\nIn the handwritten inventories that Ogilvie is analysing are the belongings of women and men at marriage, remarriage and death. From badger skins to Bibles, sewing machines to scarlet bodices – the villagers’ entire worldly goods are included. Inventories of agricultural equipment and craft tools reveal economic activities; ownership of books and education-related objects like pens and slates suggests how people learned. In addition, the tax lists included in the database record the value of farms, workshops, assets and debts; signatures and people’s estimates of their age indicate literacy and numeracy levels; and court records reveal obstacles (such as the activities of the guilds*) that stifled industry.\nPrevious studies usually had just one way of linking education with economic growth – the presence of schools and printing presses, perhaps, or school enrolment, or the ability to sign names. According to Ogilvie, the database provides multiple indicators for the same individuals, making it possible to analyse links between literacy, numeracy, wealth, and industriousness, for individual women and men over the long term.\n[p]\nOgilvie and her team have been building the vast database of material possessions on top of their full demographic reconstruction of the people who lived in these two German communities. ‘We can follow the same people – and their descendants – across 300 years of educational and economic change,’ she says. Individual lives have unfolded before their eyes. Stories like that of the 24-year-olds Ana Regina and Magdalena Riethmüllerin, who were chastised in 1707 for reading books in church instead of listening to the sermon. ‘This tells us they were continuing to develop their reading skills at least a decade after leaving school,’ explains Ogilvie. The database also reveals the case of Juliana Schweickherdt, a 50-year-old spinster living in the small Black Forest community of Wildberg, who was reprimanded in 1752 by the local weavers’ guild for ‘weaving cloth and combing wool, counter to the guide ordinance’. When Juliana continued taking jobs reserved for male guild members, she was summoned before the guild court and told to pay a fine equivalent to one third of a servant’s annual wage. It was a small act of defiance by today’s standards, but it reflects a time when laws in Germany and elsewhere regulated people’s access to labour markets. The dominance of guilds not only prevented people from using their skills, but also held back even the simplest industrial innovation.\n[p]\nThe data-gathering phase of the project has been completed and now, according to Ogilvie, it is time ‘to ask the big questions’. One way to look at whether education causes economic growth is to ‘hold wealth constant’. This involves following the lives of different people with the same level of wealth over a period of time. If wealth is constant, it is possible to discover whether education was, for example, linked to the cultivation of new crops, or to the adoption of industrial innovations like sewing machines. The team will also ask what aspect of education helped people engage more with productive and innovative activities. Was it, for instance, literacy, numeracy, book ownership, years of schooling? Was there a threshold level – a tipping point – that needed to be reached to affect economic performance?\n[p]\nOgilvie hopes to start finding answers to these questions over the next few years. One thing is already clear, she says: the relationship between education and economic growth is far from straightforward. ‘German-speaking central Europe is an excellent laboratory for testing theories of economic growth,’ she explains. Between 1600 and 1900, literacy rates and book ownership were high and yet the region remained poor. It was also the case that local guilds and merchant associations were extremely powerful and legislated against anything that undermined their monopolies. In villages throughout the region, guilds blocked labour migration and resisted changes that might reduce their influence.\n‘Early findings suggest that the potential benefits of education for the economy can be held back by other barriers, and this has implications for today,’ says Ogilvie. ‘Huge amounts are spent improving education in developing countries, but this spending can fail to deliver economic growth if restrictions block people – especially women and the poor – from using their education in economically productive ways. If economic institutions are poorly set up, for instance, education can’t lead to growth.’\n","questions":[{"id":"ms7zb3mxg","type":"matching_info","title":"Questions 14-18","instruction":"Reading Passage 2 has six paragraphs, A-F.\nWhich section contains the following information?\nWrite the correct letter, A-F, in boxes 14-18 on your answer sheet.\n","items":["14   an explanation of the need for research to focus on individuals with a fairly consistent income","15   examples of the sources the database has been compiled from","16   an account of one individual’s refusal to obey an order","17   a reference to a region being particularly suited to research into the link between education and economic growth","18   examples of the items included in a list of personal possessions"],"options":"F","text":"","dragType":"disappearing","maxSelection":1,"bulkText":"","start":14,"end":18},{"id":"i3te53ytx","type":"gap_fill","title":"Questions 19-22","instruction":"Complete the summary below.\nChoose <b>ONE WORD</b> from the passage for each answer.\nWrite your answers in boxes 19-22 on your answer sheet.\n","items":["<b>Demographic reconstruction of two German communities</b>","The database that Ogilvie and her team has compiled sheds light on the lives of a range of individuals, as well as those of their [input], over a 300-year period. For example, Ana Regina and Magdalena Riethmüllerin were reprimanded for reading while they should have been paying attention to a [input].","There was also Juliana Schweickherdt, who came to the notice of the weavers’ guild in the year 1752 for breaking guild rules. As a punishment, she was later given a [input]. Cases like this illustrate how the guilds could prevent [input] and stop skilled people from working"],"options":[],"text":"","dragType":"disappearing","maxSelection":1,"bulkText":"","start":19,"end":22}],"answers":{"14":"E","15":"A","16":"D","17":"F","18":"C","19":"descendants","20":"sermon","21":"fine","22":"innovation"}},{"id":3,"title":"Passage 3","content":"","questions":[],"answers":{}}]</script>
+    
+    <!-- Settings -->
+    <script>
+        const ENABLE_BAND_SCORE = false;
+        let examData = JSON.parse(document.getElementById('exam-data').textContent);
+        let currentPassageIndex = 0, answers = {}, isSubmitted = false, currentFontSize = 16;
+        
+        // --- RESTORE SAVED STATE (FOR REVIEW MODE) ---
+        // Check if we are in a "Saved Review" file by looking for saved-answers script
+        const savedAnswersScript = document.getElementById('saved-answers');
+        if (savedAnswersScript) {
+            const savedState = JSON.parse(savedAnswersScript.textContent);
+            answers = savedState.answers;
+            isSubmitted = true;
+            // Note: Content with highlights/notes is already embedded in examData in the review file
+        }
+
+        window.onload = () => { 
+            renderUI(); 
+            startTimer(); 
+            buildPalette(); 
+            initHighlight();
+            initResizer();
+            if (isSubmitted) {
+                document.getElementById('submitBtn').style.display = 'none';
+                document.getElementById('downloadBtn').style.display = 'none'; // No need to download again
+                submitExam(true); // Re-run submit logic to show score
+            }
+        };
+
+        // --- TEXT & NOTES SAVING ---
+        function saveCurrentPassageState() {
+            // Save the current HTML (with highlights and notes) back to examData
+            const pText = document.getElementById('passageText');
+            if (pText && examData[currentPassageIndex]) {
+                examData[currentPassageIndex].content = pText.innerHTML;
+            }
+        }
+
+        function initResizer() {
+            const resizer = document.getElementById('resizer');
+            const leftSide = document.getElementById('passagePane');
+            const container = document.getElementById('mainContainer');
+            let x = 0; let leftWidth = 0;
+            const onMouseDown = (e) => { x = e.clientX; leftWidth = leftSide.getBoundingClientRect().width; resizer.classList.add('active'); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp); document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; };
+            const onMouseMove = (e) => { const dx = e.clientX - x; const newW = ((leftWidth + dx) * 100) / container.getBoundingClientRect().width; if (newW > 20 && newW < 80) leftSide.style.width = newW + '%'; };
+            const onMouseUp = () => { resizer.classList.remove('active'); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); document.body.style.removeProperty('cursor'); document.body.style.removeProperty('user-select'); };
+            resizer.addEventListener('mousedown', onMouseDown);
+        }
+
+        function getBandScore(raw) {
+            if (raw >= 39) return "9.0"; if (raw >= 37) return "8.5"; if (raw >= 35) return "8.0";
+            if (raw >= 33) return "7.5"; if (raw >= 30) return "7.0"; if (raw >= 27) return "6.5";
+            if (raw >= 23) return "6.0"; if (raw >= 19) return "5.5"; if (raw >= 15) return "5.0";
+            if (raw >= 13) return "4.5"; if (raw >= 10) return "4.0"; if (raw >= 8) return "3.5";
+            if (raw >= 6) return "3.0"; if (raw >= 4) return "2.5"; return "2.0";
+        }
+
+        function cleanQuestionText(text) { return text.replace(/^(\d+[\s\.\-\t]*)+/, ''); }
+
+        function renderUI() {
+            const data = examData[currentPassageIndex];
+            document.getElementById('passageTitle').innerText = data.title;
+            document.getElementById('tabsContainer').innerHTML = examData.map((d,i) => `<button onclick="switchPassage(${i})" class="flex-1 py-1 text-sm font-medium hover:bg-gray-50 ${i===currentPassageIndex ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}">Passage ${i+1}</button>`).join('');
+            
+            // Content is loaded from examData (which might contain user edits/highlights)
+            let content = data.content;
+            let pIdx = 0, pLabels = ['A','B','C','D','E','F','G','H','I','J','K','L','M'];
+            
+            // Only add labels if not present (simple check to avoid doubling on re-render)
+            if (!content.includes('paragraph-label')) {
+                content = content.replace(/\[p\]/g, () => `<div class="paragraph-label">[Paragraph ${pLabels[pIdx++] || pIdx}]</div>`);
+            }
+            
+            // Render Headings
+            const headQ = data.questions.find(q => q.type === 'matching_headings');
+            if(headQ && !content.includes('heading-drop-zone')) {
+                let idx = headQ.start, sIdx = 0;
+                content = content.replace(/\[heading\]/g, () => {
+                    const label = 'Paragraph ' + (pLabels[sIdx++] || sIdx);
+                    const qNum = idx++;
+                    return `<div class="bg-gray-50 p-2 rounded border mb-2 shadow-sm flex items-center gap-4">
+                        <div class="font-bold text-gray-700 whitespace-nowrap">${label}</div>
+                        <div class="heading-drop-zone flex-grow bg-white !m-0" data-q="${qNum}" ondrop="drop(event, 'pool_${headQ.id}', ${qNum})" ondragover="allowDrop(event)">
+                            <span class="placeholder italic text-gray-400 text-sm">Drop heading here...</span>
+                            <span class="value hidden font-bold text-blue-700 text-sm"></span>
+                            <i class="fas fa-times remove-answer" onclick="clearDragAnswer(${qNum}, 'pool_${headQ.id}')"></i>
+                        </div>
+                    </div>`;
+                });
+            }
+            document.getElementById('passageText').innerHTML = content;
+            const qContainer = document.getElementById('questionsContainer'); qContainer.innerHTML = '';
+            
+            data.questions.forEach(q => {
+                const div = document.createElement('div'); div.className = "bg-white p-6 rounded shadow-sm border mb-6 transition-colors";
+                div.innerHTML = `<h3 class="font-bold text-lg mb-2 text-gray-800">${q.title}</h3>${q.instruction ? `<div class="mb-4 text-gray-600 italic text-sm border-l-4 border-gray-300 pl-3 py-1 bg-gray-50">${q.instruction.replace(/\n/g, '<br>')}</div>` : ''}`;
+                
+                if (q.type === 'tfng' || q.type === 'ynng') {
+                    const opts = q.type === 'tfng' ? ['TRUE','FALSE','NOT GIVEN'] : ['YES','NO','NOT GIVEN'];
+                    q.items.forEach((text, i) => {
+                        const qNum = text.match(/^(\d+)/) ? parseInt(text.match(/^(\d+)/)[0]) : (q.start + i);
+                        const displayText = cleanQuestionText(text);
+                        div.innerHTML += `<div class="mb-6 border-b border-gray-100 pb-4 last:border-0" data-q-container="${qNum}"><div class="mb-3 text-lg font-medium text-gray-800"><span class="font-bold text-blue-600 mr-2">${qNum}</span> ${displayText}</div><div class="flex gap-6 ml-2 md:ml-8">${opts.map(opt => `<label class="cursor-pointer flex flex-col items-center gap-2 group select-none"><input type="radio" name="q${qNum}" value="${opt}" class="hidden" onchange="saveAnswer(${qNum}, '${opt}')"><div class="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center font-bold text-sm text-gray-500 option-circle bg-white">${opt.split(' ').map(w=>w[0]).join('')}</div><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">${opt}</span></label>`).join('')}</div></div>`;
+                    });
+                } else if (q.type === 'gap_fill') {
+                    let qC = q.start;
+                    q.items.forEach(text => {
+                        const parts = text.split('[input]');
+                        const html = parts.map((part, i) => {
+                            if (i === parts.length - 1) return part;
+                            const currentQ = qC++;
+                            return part + `<input type="text" data-q="${currentQ}" class="border-b-2 border-gray-300 w-32 px-1 font-bold text-blue-700 outline-none focus:border-blue-600 text-center bg-transparent" onchange="saveAnswer(${currentQ}, this.value)">`;
+                        }).join('');
+                        div.innerHTML += `<div class="mb-3 leading-loose">${html}</div>`;
+                    });
+                } else if (q.type === 'matching_info') {
+                    const optVal = (typeof q.options === 'string' && q.options.length > 0) ? q.options : 'G';
+                    const endChar = optVal.charCodeAt(0);
+                    const letters = [];
+                    for(let c=65; c<=endChar; c++) letters.push(String.fromCharCode(c));
+
+                    q.items.forEach((text, i) => {
+                        const qNum = text.match(/^(\d+)/) ? parseInt(text.match(/^(\d+)/)[0]) : (q.start + i);
+                        const displayText = cleanQuestionText(text);
+                        let optsHtml = `<div class="flex gap-2 flex-wrap">`;
+                        letters.forEach(opt => {
+                            optsHtml += `<label class="cursor-pointer"><input type="radio" name="q${qNum}" value="${opt}" class="hidden custom-radio" onchange="saveAnswer(${qNum}, '${opt}')"><div class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center font-bold hover:bg-gray-100 text-sm transition">${opt}</div></label>`;
+                        });
+                        optsHtml += `</div>`;
+                        div.innerHTML += `<div class="mb-4 border-b border-gray-50 pb-3" data-q-container="${qNum}"><div class="mb-2"><span class="font-bold text-blue-600 mr-2">${qNum}</span> ${displayText}</div>${optsHtml}</div>`;
+                    });
+                } else if (q.type === 'multiple_choice') {
+                    const isGroup = q.maxSelection && q.maxSelection > 1;
+                    q.items.forEach((item, i) => {
+                        const qNum = item.text.match(/^(\d+)/) ? parseInt(item.text.match(/^(\d+)/)[0]) : (q.start + i);
+                        const displayText = cleanQuestionText(item.text);
+                        let html = `<div class="mb-6" data-q-container="${qNum}"><div class="font-bold mb-2 text-blue-800">${qNum}. ${displayText}</div><div class="space-y-2">`;
+                        item.options.forEach((opt, oIdx) => {
+                            const char = String.fromCharCode(65+oIdx);
+                            const type = isGroup ? 'checkbox' : 'radio';
+                            const name = isGroup ? `g${q.id}` : `q${qNum}`;
+                            const handler = isGroup ? `saveGroupAnswer('${name}', ${q.start}, ${q.maxSelection})` : `saveAnswer(${qNum}, '${char}')`;
+                            const groupAttrs = isGroup ? `data-group-start="${q.start}" data-group-end="${q.end}"` : '';
+                            html += `<label class="flex items-start cursor-pointer group"><input type="${type}" name="${name}" value="${char}" class="hidden ${isGroup?'custom-checkbox':'custom-radio'}" onchange="${handler}" ${groupAttrs}><div class="w-6 h-6 ${isGroup?'rounded':'rounded-full'} border border-gray-300 flex items-center justify-center font-bold mr-3 shrink-0 text-sm transition-all">${char}</div><span class="text-sm mt-0.5">${opt}</span></label>`;
+                        });
+                        div.innerHTML += html + '</div></div>';
+                    });
+                } else if (q.type === 'summary' || q.type === 'matching_features' || q.type === 'matching_headings') {
+                    const pId = `pool_${q.id}`;
+                    const poolHtml = `<div class="flex flex-wrap gap-2 p-3 bg-gray-100 rounded border" id="${pId}">${q.options.map(o => `<div class="draggable-option bg-white border px-3 py-1 rounded shadow-sm text-sm cursor-grab flex items-center gap-2" draggable="true" data-id="${o.id}" ondragstart="drag(event, '${o.id}')"><span class="font-bold text-blue-600">${o.id}</span> <span>${o.text}</span></div>`).join('')}</div>`;
+                    
+                    if (q.type === 'summary') {
+                        let idx = q.start; 
+                        const parts = (q.text || '').split('[input]');
+                        const textHtml = parts.map((part, pIndex) => {
+                            if (pIndex === parts.length - 1) return part;
+                            const currentQ = idx++;
+                            return part + `<span class="drop-zone" data-q="${currentQ}" ondrop="drop(event, '${pId}', ${currentQ})" ondragover="allowDrop(event)"><span class="value"></span><i class="fas fa-times remove-answer" onclick="clearDragAnswer(${currentQ}, '${pId}')"></i></span>`;
+                        }).join('');
+                        div.innerHTML += `<div class="leading-loose text-gray-800 mb-6">${textHtml}</div>${poolHtml}`;
+                    } else if (q.type === 'matching_features') {
+                        let itemsHtml = '<div class="space-y-4">';
+                        q.items.forEach((text, i) => {
+                            const qNum = text.match(/^(\d+)/) ? parseInt(text.match(/^(\d+)/)[0]) : (q.start+i);
+                            const displayText = cleanQuestionText(text);
+                            itemsHtml += `<div class="p-3 bg-gray-50 border rounded flex flex-col gap-2">
+                                <div><span class="font-bold text-blue-600 mr-2">${qNum}</span> ${displayText}</div>
+                                <div class="drop-zone w-full h-8 bg-white border-dashed" data-q="${qNum}" ondrop="drop(event, '${pId}', ${qNum})" ondragover="allowDrop(event)">
+                                    <span class="value"></span>
+                                    <i class="fas fa-times remove-answer" onclick="clearDragAnswer(${qNum}, '${pId}')"></i>
+                                </div>
+                            </div>`;
+                        });
+                        itemsHtml += '</div>';
+                        div.innerHTML += `<div class="flex flex-col md:flex-row gap-6">
+                            <div class="flex-1">${itemsHtml}</div>
+                            <div class="md:w-1/3 shrink-0"><div class="sticky top-4">${poolHtml}</div></div>
+                        </div>`;
+                    } else { div.innerHTML += poolHtml; }
+                }
+                qContainer.appendChild(div);
+            });
+            restoreAnswers(); updateFontSize();
+            
+            if(isSubmitted) {
+                const allKey = {}; examData.forEach(d => { if(d.answers) Object.assign(allKey, d.answers); });
+                showCorrections(allKey);
+            }
+        }
+
+        function switchPassage(i) { saveCurrentPassageState(); currentPassageIndex = i; renderUI(); }
+        function saveAnswer(q, v) { if(!isSubmitted) { answers[q] = v; buildPalette(); } }
+        function saveGroupAnswer(name, start, max) {
+            if(isSubmitted) return;
+            const checkboxes = document.querySelectorAll(`input[name="${name}"]:checked`);
+            const vals = Array.from(checkboxes).map(c => c.value);
+            for(let i=0; i<max; i++) delete answers[start+i];
+            vals.forEach((v, i) => { if(i < max) answers[start+i] = v; });
+            buildPalette();
+        }
+        function drag(e, id) { if(isSubmitted) return; e.dataTransfer.setData("text", id); }
+        function allowDrop(e) { e.preventDefault(); }
+        function drop(e, pId, q) {
+            e.preventDefault(); if(isSubmitted) return;
+            const id = e.dataTransfer.getData("text");
+            const zone = e.target.closest('.drop-zone, .heading-drop-zone');
+            if(!zone) return;
+            const valueSpan = zone.querySelector('.value');
+            const placeholder = zone.querySelector('.placeholder');
+            if(zone.classList.contains('heading-drop-zone')) { valueSpan.innerText = id; valueSpan.classList.remove('hidden'); if(placeholder) placeholder.classList.add('hidden'); } 
+            else { valueSpan.innerText = id; }
+            zone.classList.add('filled');
+            const qGroup = findQuestionGroup(q);
+            if(qGroup && qGroup.dragType === 'disappearing') {
+                const pool = document.getElementById(pId);
+                const oldVal = answers[q];
+                if(pool) Array.from(pool.children).forEach(c => { if(c.dataset.id === id) c.style.display = 'none'; if(oldVal && c.dataset.id === oldVal) c.style.display = 'flex'; });
+            }
+            saveAnswer(q, id);
+        }
+        function clearDragAnswer(q, pId) {
+            if(isSubmitted) return;
+            const oldVal = answers[q], qGroup = findQuestionGroup(q);
+            if(oldVal && qGroup && qGroup.dragType === 'disappearing') {
+                const pool = document.getElementById(pId);
+                if(pool) Array.from(pool.children).forEach(c => { if(c.dataset.id === oldVal) c.style.display = 'flex'; });
+            }
+            delete answers[q]; buildPalette();
+            const zone = document.querySelector(`[data-q="${q}"]`);
+            if(zone) {
+                zone.classList.remove('filled');
+                const val = zone.querySelector('.value');
+                if(val) val.innerText = '';
+                const ph = zone.querySelector('.placeholder');
+                if(ph) ph.classList.remove('hidden');
+                if(zone.classList.contains('heading-drop-zone')) val.classList.add('hidden');
+            }
+        }
+        function findQuestionGroup(qNum) { for(let p of examData) { for(let q of p.questions) { if(qNum >= q.start && qNum <= q.end) return q; } } return null; }
+        
+        function restoreAnswers() {
+            document.querySelectorAll('input').forEach(i => { 
+                const qKey = i.name.startsWith('q') ? i.name.substring(1) : (i.dataset.q || '');
+                let isMatch = false;
+                if(i.type === 'checkbox' || i.type === 'radio') {
+                    if(i.dataset.groupStart) {
+                        const start = parseInt(i.dataset.groupStart); const end = parseInt(i.dataset.groupEnd);
+                        for(let k=start; k<=end; k++) { if(answers[k] === i.value) { isMatch = true; break; } }
+                    } else { if(answers[qKey] === i.value) isMatch = true; }
+                    if(isMatch) i.checked = true;
+                } else { if(answers[qKey]) i.value = answers[qKey]; }
+                if(isSubmitted) i.disabled=true; 
+            });
+            document.querySelectorAll('.drop-zone, .heading-drop-zone').forEach(z => { 
+                const q = z.dataset.q;
+                if(answers[q]) { 
+                    const val = z.querySelector('.value');
+                    if(z.classList.contains('heading-drop-zone')) { val.innerText = answers[q]; val.classList.remove('hidden'); const ph = z.querySelector('.placeholder'); if(ph) ph.classList.add('hidden'); } else { val.innerText = answers[q]; } 
+                    z.classList.add('filled'); 
+                    const qG = findQuestionGroup(parseInt(q));
+                    if(qG && qG.dragType === 'disappearing') {
+                        const pool = document.getElementById(`pool_${qG.id}`);
+                        if(pool) Array.from(pool.children).forEach(c => { if(c.dataset.id === answers[q]) c.style.display = 'none'; });
+                    }
+                } 
+            });
+        }
+        function buildPalette() { const p = document.getElementById('paletteContainer'); p.innerHTML = ''; let max = 0; examData.forEach(d => d.questions.forEach(q => max = Math.max(max, q.end))); for(let i=1; i<=max; i++) { const b = document.createElement('div'); b.className = `palette-item w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer ${answers[i] ? 'answered' : ''}`; b.innerText = i; b.onclick = () => scrollToQ(i); p.appendChild(b); } }
+        function scrollToQ(i) { let pIdx = 0; examData.forEach((d, idx) => { if(d.questions.some(q => i >= q.start && i <= q.end)) pIdx = idx; }); if(pIdx !== currentPassageIndex) { switchPassage(pIdx); setTimeout(() => doScroll(i), 100); } else doScroll(i); }
+        function doScroll(i) { const el = document.querySelector(`[data-q="${i}"], input[name="q${i}"]`); if(el) el.scrollIntoView({behavior:"smooth",block:"center"}); }
+        function startTimer() { let t = 3600; setInterval(() => { if(!isSubmitted) { t--; document.getElementById('timer').innerText = `${Math.floor(t/60)}:${(t%60).toString().padStart(2,'0')}`; } }, 1000); }
+        
+        function submitExam(isReview = false) { 
+            if(!isReview && !confirm("Submit?")) return; 
+            saveCurrentPassageState(); // Save current view highlights/notes
+            isSubmitted = true; 
+            document.getElementById('submitBtn').style.display='none';
+            if(!isReview) document.getElementById('downloadBtn').classList.remove('hidden'); // Show download button
+            
+            let c = 0, t = 0; const allKey = {}; examData.forEach(d => { if(d.answers) Object.assign(allKey, d.answers); });
+            for(let q in allKey) { 
+                t++; const userAns = (answers[q] || '').toString().trim().toLowerCase(); const key = allKey[q]; let isRight = false;
+                if(Array.isArray(key)) isRight = key.some(k => k.toString().trim().toLowerCase() === userAns); else isRight = key.toString().trim().toLowerCase() === userAns;
+                if(isRight && userAns !== '') c++; 
+            }
+            document.getElementById('scoreDisplay').classList.remove('hidden'); 
+            document.getElementById('scoreDisplay').querySelector('.text-green-700').innerText = `Raw Score: ${c}/${t}`;
+            if (ENABLE_BAND_SCORE) {
+                document.getElementById('scoreDisplay').querySelector('.text-blue-700').innerText = `Est. Band: ${getBandScore(c)}`;
+            } else {
+                document.getElementById('scoreDisplay').querySelector('.text-blue-700').style.display = 'none';
+            }
+            showCorrections(allKey);
+        }
+
+        function showCorrections(all) {
+            document.querySelectorAll('.correction-label').forEach(el => el.remove());
+            document.querySelectorAll('input[type="text"], .drop-zone, .heading-drop-zone').forEach(el => {
+                const q = el.dataset.q; if(!q || !all[q]) return;
+                const user = (answers[q]||'').toString().trim().toLowerCase(); const key = all[q]; let right = false;
+                if(Array.isArray(key)) right = key.some(k => k.toString().trim().toLowerCase() === user); else right = key.toString().trim().toLowerCase() === user;
+                el.style.borderColor = right ? '#16a34a' : '#ef4444'; el.style.color = right ? '#16a34a' : '#ef4444';
+                if(!right) { const displayKey = Array.isArray(key) ? key.join(' / ') : key; const b = document.createElement('span'); b.className = 'correction-label'; b.innerHTML = `<i class="fas fa-check"></i> ${displayKey}`; el.parentNode.insertBefore(b, el.nextSibling); }
+            });
+            document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => {
+                const name = el.name; let qNum = null; if (name.startsWith('q')) qNum = name.substring(1);
+                let key = [];
+                if(el.dataset.groupStart) { const start = parseInt(el.dataset.groupStart); const end = parseInt(el.dataset.groupEnd); for(let i=start; i<=end; i++) { if(all[i]) { if(Array.isArray(all[i])) all[i].forEach(v => key.push(v.toString().trim().toLowerCase())); else key.push(all[i].toString().trim().toLowerCase()); } } } else if (qNum && all[qNum]) { const k = all[qNum]; if(Array.isArray(k)) k.forEach(v => key.push(v.toString().trim().toLowerCase())); else key.push(k.toString().trim().toLowerCase()); } else { return; }
+                const val = el.value.toString().trim().toLowerCase(); const isCorrectOption = key.includes(val); const visualDiv = el.nextElementSibling;
+                if(isCorrectOption) { visualDiv.style.backgroundColor = '#22c55e'; visualDiv.style.color = 'white'; visualDiv.style.borderColor = '#22c55e'; visualDiv.style.borderStyle = 'solid'; } 
+                else if(el.checked) { visualDiv.style.backgroundColor = '#ef4444'; visualDiv.style.color = 'white'; visualDiv.style.borderColor = '#ef4444'; } 
+                else { visualDiv.style.backgroundColor = ''; visualDiv.style.color = ''; visualDiv.style.borderColor = ''; }
+                if (isCorrectOption && !el.checked) { visualDiv.style.borderStyle = 'dashed'; visualDiv.style.borderWidth = '2px'; visualDiv.style.borderColor = '#16a34a'; visualDiv.style.backgroundColor = 'transparent'; visualDiv.style.color = '#16a34a'; }
+            });
+        }
+
+        // --- NEW FEATURES ---
+        function toggleSettings(v) { const d = document.getElementById('settings-dropdown'); if(v!==undefined) v?d.classList.remove('hidden'):d.classList.add('hidden'); else d.classList.toggle('hidden'); }
+        function changeFontSize(d) { currentFontSize += d; updateFontSize(); }
+        function updateFontSize() { document.getElementById('passageText').style.fontSize = currentFontSize+'px'; document.getElementById('questionPane').style.fontSize = currentFontSize+'px'; }
+        function setTheme(t) { document.body.className = 'bg-gray-100 h-screen flex flex-col theme-'+t; }
+        
+        function initHighlight() {
+            document.addEventListener('mouseup', () => { const s = window.getSelection(), t = document.getElementById('highlight-tooltip'); if(s.toString().trim() && !isSubmitted) { const r = s.getRangeAt(0).getBoundingClientRect(); t.style.left = (r.left + window.scrollX + r.width/2)+'px'; t.style.top = (r.top + window.scrollY - 40)+'px'; t.style.display = 'block'; } else t.style.display = 'none'; });
+        }
+        function applyHighlight(e) { 
+            e.preventDefault(); const s = window.getSelection(); if(!s.rangeCount) return; const r = s.getRangeAt(0); const sp = document.createElement('span'); sp.className = 'highlighted'; sp.title = 'Click to remove highlight';
+            sp.onclick = function(ev) { ev.stopPropagation(); const txt = document.createTextNode(this.innerText); this.parentNode.replaceChild(txt, this); document.getElementById('passageText').normalize(); saveCurrentPassageState(); };
+            sp.appendChild(r.extractContents()); r.insertNode(sp); s.removeAllRanges(); saveCurrentPassageState();
+        }
+        
+        function addNote(e) {
+            e.preventDefault(); const s = window.getSelection(); if(!s.rangeCount) return; 
+            const noteText = prompt("Enter your note:"); if(!noteText) return;
+            const r = s.getRangeAt(0); const sp = document.createElement('span'); sp.className = 'note-marker'; sp.setAttribute('data-note', noteText);
+            sp.onclick = function(ev) { if(confirm("Remove note?")) { const txt = document.createTextNode(this.innerText); this.parentNode.replaceChild(txt, this); document.getElementById('passageText').normalize(); saveCurrentPassageState(); } };
+            sp.appendChild(r.extractContents()); r.insertNode(sp); s.removeAllRanges(); saveCurrentPassageState();
+        }
+
+        function downloadReview() {
+            saveCurrentPassageState(); // Ensure last state is saved
+            // We need to create a new HTML file that includes the current examData (which has updated HTML content with notes/highlights) and the answers.
+            const originalHTML = document.documentElement.outerHTML;
+            
+            // 1. Update examData script content
+            const jsonStr = JSON.stringify(examData);
+            let newHTML = originalHTML.replace(/<script type="application\/json" id="exam-data">.*?<\/script>/s, `<script type="application/json" id="exam-data">${jsonStr}<\/script>`);
+            
+            // 2. Add saved answers script
+            const savedState = { answers: answers, submittedAt: new Date().toISOString() };
+            const answerScript = `<script type="application/json" id="saved-answers">${JSON.stringify(savedState)}<\/script>`;
+            newHTML = newHTML.replace('</body>', `${answerScript}</body>`);
+            
+            const blob = new Blob([newHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `IELTS_Review_${new Date().toISOString().slice(0,10)}.html`; a.click();
+        }
+		// --- LOGIC TRA CÂU (TRACAU API) ---
+
+function closeDictionary() {
+    document.getElementById('dictionary-modal').classList.add('hidden');
+}
+
+// Đóng modal khi click ra ngoài vùng trắng
+document.getElementById('dictionary-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeDictionary();
+});
+
+async function lookupWord(e) {
+    e.preventDefault(); // Ngăn việc mất vùng chọn văn bản
+    e.stopPropagation();
+
+    const selection = window.getSelection().toString().trim();
+    if (!selection) {
+        alert("Vui lòng bôi đen từ hoặc câu cần tra!");
+        return;
+    }
+
+    // Hiển thị modal và trạng thái Loading
+    const modal = document.getElementById('dictionary-modal');
+    const content = document.getElementById('dictionary-content');
+    modal.classList.remove('hidden');
+    content.innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full text-gray-500">
+            <i class="fas fa-spinner fa-spin text-4xl mb-4 text-blue-500"></i>
+            <p>Đang tìm kiếm "<b>${selection}</b>"...</p>
+        </div>`;
+
+    // Cấu hình API
+    const apiKey = 'WBBcwnwQpV89';
+    // Mặc định tra từ tiếng Anh (en) trong văn bản
+    const lang = 'en'; 
+    const url = `https://api.tracau.vn/${apiKey}/s/${encodeURIComponent(selection)}/${lang}`;
+
+    try {
+        const response = await fetch(url);
+        
+        if (!response.ok) throw new Error(`Lỗi kết nối: ${response.status}`);
+        
+        const data = await response.json();
+        renderTracauResult(data, selection);
+
+    } catch (err) {
+        console.error(err);
+        content.innerHTML = `
+            <div class="p-4 bg-red-50 text-red-700 rounded border border-red-200">
+                <h4 class="font-bold mb-2"><i class="fas fa-exclamation-triangle"></i> Có lỗi xảy ra</h4>
+                <p>${err.message}</p>
+                <p class="text-sm mt-2 text-gray-600">Lưu ý: Nếu bạn mở file trực tiếp (file://), trình duyệt có thể chặn kết nối API do chính sách CORS (Cross-Origin).</p>
+            </div>`;
+    }
+}
+
+function renderTracauResult(data, keyword) {
+    const content = document.getElementById('dictionary-content');
+    
+    // Xử lý hiển thị dựa trên cấu trúc JSON trả về của Tra Câu
+    // (Vì cấu trúc API có thể thay đổi, ta sẽ xử lý linh hoạt)
+    
+    let html = `<div class="mb-4 text-lg">Kết quả cho: <span class="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded">${keyword}</span></div>`;
+
+    // Trường hợp 1: API trả về danh sách câu (sentences)
+    if (data.sentences && Array.isArray(data.sentences)) {
+        html += `<h4 class="font-bold text-gray-700 border-b pb-2 mb-3">Mẫu câu song ngữ</h4>`;
+        data.sentences.forEach(item => {
+            // Giả sử item có fields: en (gốc) và vi (dịch) - cần điều chỉnh tùy thực tế API trả về
+            const source = item.fields ? (item.fields.en || item.fields.sentence) : item.en;
+            const target = item.fields ? (item.fields.vi || item.fields.translation) : item.vi;
+            
+            if(source && target) {
+                html += `
+                <div class="tracau-result-item">
+                    <span class="tracau-source">${source}</span>
+                    <span class="tracau-target">${target}</span>
+                </div>`;
+            }
+        });
+    } 
+    // Trường hợp 2: Nếu API trả về trực tiếp HTML hoặc text
+    else if (typeof data === 'string') {
+        html += `<div>${data}</div>`;
+    }
+    // Trường hợp 3: Hiển thị thô (nếu cấu trúc lạ)
+    else {
+        html += `<pre class="bg-gray-100 p-3 rounded text-sm overflow-auto max-h-96">${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    if (!data || (Array.isArray(data.sentences) && data.sentences.length === 0)) {
+        html += `<p class="text-gray-500 italic">Không tìm thấy kết quả phù hợp.</p>`;
+    }
+
+    content.innerHTML = html;
+}
+    </script>
+	
+	<div id="dictionary-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center font-sans">
+    <div class="bg-white w-11/12 md:w-3/4 lg:w-1/2 h-3/4 rounded-lg shadow-2xl flex flex-col overflow-hidden relative animate-fade-in-up">
+        <div class="bg-blue-600 text-white px-6 py-4 flex justify-between items-center shrink-0">
+            <h3 class="text-xl font-bold"><i class="fas fa-language mr-2"></i>Kết quả Tra câu</h3>
+            <button onclick="closeDictionary()" class="hover:bg-blue-700 w-8 h-8 rounded-full flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="dictionary-content" class="p-6 overflow-y-auto flex-1 text-gray-800 leading-relaxed">
+            </div>
+    </div>
+</div>
+
+<style>
+    /* Thêm một chút CSS cho kết quả đẹp hơn */
+    .tracau-result-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+    .tracau-source { font-weight: bold; color: #2563eb; display: block; margin-bottom: 4px; }
+    .tracau-target { color: #4b5563; }
+    .tracau-dict-entry { margin-bottom: 15px; }
+    .tracau-dict-type { font-style: italic; color: #dc2626; font-weight: bold; }
+</style>
+</body>
+</html>
